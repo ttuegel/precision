@@ -73,7 +73,7 @@ instance Imprecise CFloat where
     scale = (*)
 
 
-instance (Floating (Estimate a), Imprecise a) => Imprecise (Complex a) where
+instance Imprecise a => Imprecise (Complex a) where
     type Estimate (Complex a) = Estimate a
     limiting (re :+ im) = max (limiting re) (limiting im)
     scale a (re :+ im) = scale a re :+ scale a im
