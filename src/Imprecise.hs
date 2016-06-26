@@ -17,27 +17,31 @@ class ( Num (Estimate a), Ord (Estimate a)
       ) =>
     Imprecise a where
 
-    -- | The precision of @a@. @Precision a@ must be an ordered number.
+    -- | An estimate of values of type @a@ suitable for estimating its size
+    -- and precision.
     type Estimate a
 
-    -- | Estimate the representational precision of a value of @a@. Must be
-    -- a non-negative number. @precision a > precision b@ indicates that @a@
-    -- is less precise than @b@. The default implementation is suitable
-    -- /unless/ @Estimate a = a@.
+    -- | Estimate the /precision/ of a value. @precision a > precision b@
+    -- indicates that @a@ is less precise than @b@. The default implementation
+    -- is suitable /unless/ @Estimate a = a@.
     precision :: a -> Estimate a
     precision a = precision (limiting a)
 
-    -- | Estimate the value of @a@ which most limits its precision. Must be
-    -- a non-negative number. For floating-point numbers in the usual
-    -- representations, @limiting = abs@. For collections of imprecise values,
-    -- this may be the greatest @limiting@ value of all the elements.
+    -- | Estimate the /size/ of the precision-limiting element of a collection
+    -- of values. @limiting@ must obey
     --
     -- > precision a == precision (limiting a)
+    --
+    -- For floating-point numbers in the usual representations,
+    -- @limiting = abs@. For collections of imprecise values, this is generally
+    -- the greatest @limiting@ value of all the elements.
     limiting :: a -> Estimate a
 
-    -- | Scale a value of @a@ by an estimated value. Must obey
+    -- | Scale a value of by an estimate. @scale@ must obey
     --
     -- > limiting (scale x a) = abs x * limiting a
+    --
+    -- because most error-aware algorithms assume linearity of precision.
     scale :: Estimate a -> a -> a
 
 
@@ -70,9 +74,6 @@ instance Imprecise CFloat where
 
 
 instance (Floating (Estimate a), Imprecise a) => Imprecise (Complex a) where
-
     type Estimate (Complex a) = Estimate a
-
     limiting (re :+ im) = max (limiting re) (limiting im)
-
     scale a (re :+ im) = scale a re :+ scale a im
