@@ -1,7 +1,7 @@
-name:                numeric-errors
+name:                imprecise
 version:             0.1.0.0
-synopsis:            Estimate rounding and sequence truncation errors
-homepage:            https://github.com/ttuegel/numeric-errors
+synopsis:            Estimate errors in finite-precision types
+homepage:            https://github.com/ttuegel/imprecise
 license:             LGPL-3
 license-file:        LICENSE
 author:              Thomas Tuegel
@@ -13,7 +13,7 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Numeric.Errors
+  exposed-modules:     Imprecise
   other-extensions:    TypeFamilies
   build-depends:
       base >= 4.8 && < 4.10
