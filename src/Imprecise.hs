@@ -1,9 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 
 module Imprecise ( Imprecise(..) ) where
 
+import Data.Complex ( Complex(..) )
 import Foreign.C.Types ( CDouble, CFloat )
 import Numeric.IEEE ( epsilon )
 
@@ -41,3 +43,24 @@ instance Imprecise CFloat where
     precision x = abs x * epsilon
     limiting = abs
     scale = (*)
+
+
+instance (Floating (Precision a), Imprecise a) => Imprecise (Complex a) where
+
+    type Precision (Complex a) = Precision a
+
+    precision (re :+ im) =
+        let
+            pr = precision re
+            pi = precision im
+        in
+          sqrt (pr * pr + pi * pi)
+
+    limiting (re :+ im) =
+        let
+            lr = limiting re
+            li = limiting im
+        in
+          sqrt (lr * lr + li * li)
+
+    scale a (re :+ im) = scale a re :+ scale a im
