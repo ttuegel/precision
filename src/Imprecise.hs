@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 
 
@@ -7,7 +8,7 @@ import Foreign.C.Types ( CDouble, CFloat )
 import Numeric.IEEE ( epsilon )
 
 
-class Imprecise a where
+class Ord (Precision a) => Imprecise a where
     type Precision a
     precision :: a -> Precision a
     limiting :: a -> Precision a
