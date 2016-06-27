@@ -11,7 +11,7 @@ import Foreign.C.Types ( CDouble, CFloat )
 import Numeric.IEEE ( epsilon )
 
 
-class Num (Tol a) => Tolerance a where
+class (Num (Tol a), Ord (Tol a)) => Tolerance a where
     type Tol a
     consistent :: Tol a -> a -> a -> Bool
 
