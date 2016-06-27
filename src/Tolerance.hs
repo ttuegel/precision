@@ -66,3 +66,16 @@ instance Precision CFloat where
 
 instance Accuracy CFloat where
     accuracy x y = abs (x - y)
+
+
+instance Tolerance a => Tolerance (Complex a) where
+    type Tol (Complex a) = Tol a
+    consistent tol (re0 :+ im0) (re1 :+ im1) =
+        consistent tol re0 re1 && consistent tol im0 im1
+
+instance Precision a => Precision (Complex a) where
+    precision (re :+ im) = max (precision re) (precision im)
+
+instance Accuracy a => Accuracy (Complex a) where
+    accuracy (re0 :+ im0) (re1 :+ im1) =
+        max (accuracy re0 re1) (accuracy im0 im1)
