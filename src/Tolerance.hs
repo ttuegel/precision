@@ -20,7 +20,7 @@ module Tolerance where
 
 import Data.Complex ( Complex(..) )
 import Foreign.C.Types ( CDouble, CFloat )
-import Numeric.IEEE ( epsilon )
+import Numeric.IEEE ( epsilon, minNormal )
 
 
 class Num a => Tolerance a where
@@ -42,25 +42,25 @@ class Num a => Tolerance a where
 instance Tolerance Double where
     consistent tol x y = abs (x - y) <= tol
 
-    precision x = max epsilon (abs x * epsilon)
+    precision x = max minNormal (abs x * epsilon)
 
 
 instance Tolerance Float where
     consistent tol x y = abs (x - y) <= tol
 
-    precision x = max epsilon (abs x * epsilon)
+    precision x = max minNormal (abs x * epsilon)
 
 
 instance Tolerance CDouble where
     consistent tol x y = abs (x - y) <= tol
 
-    precision x = max epsilon (abs x * epsilon)
+    precision x = max minNormal (abs x * epsilon)
 
 
 instance Tolerance CFloat where
     consistent tol x y = abs (x - y) <= tol
 
-    precision x = max epsilon (abs x * epsilon)
+    precision x = max minNormal (abs x * epsilon)
 
 
 instance (RealFloat a, Tolerance a) => Tolerance (Complex a) where
