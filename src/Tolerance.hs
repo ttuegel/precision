@@ -42,25 +42,25 @@ class Num a => Tolerance a where
 instance Tolerance Double where
     consistent tol x y = abs (x - y) <= tol
 
-    precision x = abs x * epsilon
+    precision x = max epsilon (abs x * epsilon)
 
 
 instance Tolerance Float where
     consistent tol x y = abs (x - y) <= tol
 
-    precision x = abs x * epsilon
+    precision x = max epsilon (abs x * epsilon)
 
 
 instance Tolerance CDouble where
     consistent tol x y = abs (x - y) <= tol
 
-    precision x = abs x * epsilon
+    precision x = max epsilon (abs x * epsilon)
 
 
 instance Tolerance CFloat where
     consistent tol x y = abs (x - y) <= tol
 
-    precision x = abs x * epsilon
+    precision x = max epsilon (abs x * epsilon)
 
 
 instance (RealFloat a, Tolerance a) => Tolerance (Complex a) where
