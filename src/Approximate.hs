@@ -198,3 +198,38 @@ instance (RealFloat a, Approximate a) => Approximate (Complex a) where
         Rel (fromAbs re ret :+ fromAbs im imt)
       where
         fromAbs x t = unRel (fromAbsolute x (Abs t))
+
+
+data Approx a = (:±) !a !(Abs a)
+
+infix 7 :±
+
+instance Approximate a => Num (Approx a) where
+    (a :± p) + (b :± q) = (a + b) :± (p <> q)
+
+    (a :± p) - (b :± q) = (a - b) :± (p <> q)
+
+    (a :± p) * (b :± q) =
+        ab :± fromRelative ab (rp <> rq)
+      where
+        ab = a * b
+        rp = fromAbsolute a p
+        rq = fromAbsolute b q
+
+    negate (a :± p) = negate a :± p
+
+    abs (a :± p) = abs a :± p
+
+    signum (a :± _) = signum a :± mempty
+
+    fromInteger = approx . fromInteger
+
+
+approx :: Approximate a => a -> Approx a
+approx x = x :± absolute x
+
+
+(±) :: Num a => a -> a -> Approx a
+a ± p = a :± Abs (abs p)
+
+infix 7 ±
