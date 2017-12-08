@@ -24,7 +24,7 @@ module Approximate
       Abs, toAbs, unAbs,
       Rel, toRel, unRel,
       Approximate(..), fromAbsolute, fromRelative,
-      Approx, approx, (±), value, uncertainty, consistent
+      Approx, exact, (±), value, uncertainty, consistent
     ) where
 
 import Data.Complex ( Complex(..) )
@@ -175,11 +175,13 @@ instance (Approximate a, Fractional a, Num a, Ord a) => Num (Approx a) where
 
     signum (a :± _) = signum a :± mempty
 
-    fromInteger = approx . fromInteger
+    fromInteger = exact . fromInteger
 
 
-approx :: Approximate a => a -> Approx a
-approx x = x :± absolute x
+-- | An exact value with no uncertainty, except the uncertainty inherent
+-- in the representation.
+exact :: Approximate a => a -> Approx a
+exact x = x :± absolute x
 
 
 (±) :: (Approximate a, Num a, Ord a) => a -> a -> Approx a
