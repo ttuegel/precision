@@ -179,27 +179,6 @@ instance Approximate CFloat where
     fromAbsolute = fromAbsoluteIEEE
 
 
-instance (RealFloat a, Approximate a) => Approximate (Complex a) where
-    consistent (Abs (ret :+ imt)) (re0 :+ im0) (re1 :+ im1) =
-        consistent (Abs ret) re0 re1 && consistent (Abs imt) im0 im1
-
-    absolute (re :+ im) =
-        Abs (unAbs (absolute re) :+ unAbs (absolute im))
-
-    relative (re :+ im) =
-        Rel (unRel (relative re) :+ unRel (relative im))
-
-    fromRelative (re :+ im) (Rel (ret :+ imt)) =
-        Abs (fromRel re ret :+ fromRel im imt)
-      where
-        fromRel x t = unAbs (fromRelative x (Rel t))
-
-    fromAbsolute (re :+ im) (Abs (ret :+ imt)) =
-        Rel (fromAbs re ret :+ fromAbs im imt)
-      where
-        fromAbs x t = unRel (fromAbsolute x (Abs t))
-
-
 data Approx a = (:±) !a !(Abs a)
 
 infix 7 :±
