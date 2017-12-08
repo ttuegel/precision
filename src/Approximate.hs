@@ -32,8 +32,8 @@ newtype Abs a = Abs { unAbs :: a }
 
 
 class Num a => Approximate a where
-    -- | Compare two values for equality up to the specified tolerance.
-    -- The consistency relation is commutative,
+    -- | Compare two values for equality up to the specified absolute
+    -- uncertainty. The consistency relation is commutative,
     -- @
     --     consistent t a b === consistent t b a
     -- @
@@ -69,15 +69,22 @@ class Num a => Approximate a where
         -> Rel a  -- ^ relative precision
     relative x = fromAbsolute x (absolute x)
 
+    -- | At the given point, convert a relative uncertainty to an absolute
+    -- uncertainty.
     fromRelative
         :: a  -- ^ value
         -> Rel a  -- ^ absolute precision
         -> Abs a  -- ^ relative precision
 
+    -- | At the given point, convert an absolute uncertainty to a relative
+    -- uncertainty.
     fromAbsolute
         :: a  -- ^ value
         -> Abs a  -- ^ relative precision
         -> Rel a  -- ^ absolute precision
+
+
+-- Helpers for IEEE types
 
 
 absoluteIEEE :: (IEEE a, Num a) => a -> Abs a
@@ -88,8 +95,10 @@ relativeIEEE :: (IEEE a, Num a) => a -> Rel a
 relativeIEEE 0 = Rel 1
 relativeIEEE _ = Rel epsilon
 
+
 fromRelativeIEEE :: (Approximate a, IEEE a, Num a) => a -> Rel a -> Abs a
 fromRelativeIEEE x (Rel tol) = Abs (max (unAbs (absolute x)) (abs x * tol))
+
 
 fromAbsoluteIEEE :: (Approximate a, IEEE a, Num a) => a -> Abs a -> Rel a
 fromAbsoluteIEEE x (Abs tol) = Rel (min (unRel (relative x)) (tol / abs x))
