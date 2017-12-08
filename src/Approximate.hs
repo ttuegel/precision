@@ -69,21 +69,6 @@ instance Show a => Show (Abs a) where
 
 
 class Num a => Approximate a where
-    -- | Compare two values for equality up to the specified absolute
-    -- uncertainty. Consistency is commutative but not transitive:
-    -- @
-    --     consistent t a b <===> consistent t b a
-    -- @
-    -- but
-    -- @
-    --     consistent t a b && consistent t b c =/=> consistent t a c
-    -- @
-    consistent
-        :: Abs a  -- ^ tolerance
-        -> a
-        -> a
-        -> Bool
-
     -- | The absolute precision of the type at the given value.
     -- @absolute x@ defines a volume at @x@;
     -- there are no values except @x@ in that volume, i.e.
@@ -144,8 +129,6 @@ fromAbsoluteIEEE x (Abs tol) = Rel (min (unRel (relative x)) (tol / abs x))
 
 
 instance Approximate Double where
-    consistent (Abs tol) x y = abs (x - y) <= tol
-
     absolute = absoluteIEEE
     relative = relativeIEEE
     fromRelative = fromRelativeIEEE
@@ -153,8 +136,6 @@ instance Approximate Double where
 
 
 instance Approximate Float where
-    consistent (Abs tol) x y = abs (x - y) <= tol
-
     absolute = absoluteIEEE
     relative = relativeIEEE
     fromRelative = fromRelativeIEEE
@@ -162,8 +143,6 @@ instance Approximate Float where
 
 
 instance Approximate CDouble where
-    consistent (Abs tol) x y = abs (x - y) <= tol
-
     absolute = absoluteIEEE
     relative = relativeIEEE
     fromRelative = fromRelativeIEEE
@@ -171,8 +150,6 @@ instance Approximate CDouble where
 
 
 instance Approximate CFloat where
-    consistent (Abs tol) x y = abs (x - y) <= tol
-
     absolute = absoluteIEEE
     relative = relativeIEEE
     fromRelative = fromRelativeIEEE
@@ -212,3 +189,16 @@ approx x = x :± absolute x
 a ± p = a :± Abs (abs p)
 
 infix 7 ±
+
+
+-- | Compare two approximate values for equality up to the specified absolute
+-- uncertainty. Consistency is commutative but not transitive:
+-- @
+--     consistent a b <===> consistent b a
+-- @
+-- but
+-- @
+--     consistent a b && consistent b c =/=> consistent a c
+-- @
+consistent :: (Num a, Ord a) => Approx a -> Approx a -> Bool
+consistent (a :± p) (b :± q) = abs (a - b) <= unAbs p + unAbs q
