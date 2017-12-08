@@ -13,8 +13,7 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Tolerance
-  other-extensions:    TypeFamilies
+  exposed-modules:     Approximate
   build-depends:
       base
     , ieee754 == 0.7.*
