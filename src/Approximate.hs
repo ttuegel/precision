@@ -19,7 +19,13 @@ specific language governing permissions and limitations under the License.
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Approximate where
+module Approximate
+    (
+      Abs, unAbs,
+      Rel, unRel,
+      Approximate(..), fromAbsolute, fromRelative,
+      Approx, approx, (±), value, uncertainty, consistent
+    ) where
 
 import Data.Complex ( Complex(..) )
 import Data.Semigroup
