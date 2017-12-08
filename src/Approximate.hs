@@ -84,22 +84,26 @@ toAbs = Abs . abs
 
 
 -- | At the given point, convert a relative uncertainty to an absolute
--- uncertainty.
+-- uncertainty. The absolute uncertainty at @x@ does not exceed @toAbs x@,
+-- which represents total uncertainty.
 fromRelative
     :: (Approximate a, Num a, Ord a)
     => a  -- ^ value
     -> Rel a  -- ^ absolute precision
     -> Abs a  -- ^ relative precision
-fromRelative x (Rel t) = max (absolute x) (toAbs (x * t))
+fromRelative x (Rel t) =
+    min (toAbs x) (max (absolute x) (toAbs (x * t)))
 
 -- | At the given point, convert an absolute uncertainty to a relative
--- uncertainty.
+-- uncertainty. The relative uncertainty does not exceed @toRel 1@,
+-- which represents total uncertainty.
 fromAbsolute
     :: (Approximate a, Fractional a, Ord a)
     => a  -- ^ value
     -> Abs a  -- ^ absolute precision
     -> Rel a  -- ^ relative precision
-fromAbsolute x (Abs t) = max (relative x) (toRel (t / x))
+fromAbsolute x (Abs t) =
+    min (toRel 1) (max (relative x) (toRel (t / x)))
 
 
 class Approximate a where
@@ -158,16 +162,22 @@ data Approx a = (:±) !a !(Abs a)
 infix 7 :±
 
 instance (Approximate a, Fractional a, Num a, Ord a) => Num (Approx a) where
-    (a :± p) + (b :± q) = (a + b) :± (p <> q)
+    (a :± p) + (b :± q) =
+        r :± u
+      where
+        r = a + b
+        u = min (toAbs r) (p <> q)
 
-    (a :± p) - (b :± q) = (a - b) :± (p <> q)
+    (a :± p) - (b :± q) =
+        r :± u
+      where
+        r = a - b
+        u = min (toAbs r) (p <> q)
 
     (a :± p) * (b :± q) =
-        ab :± fromRelative ab (rp <> rq)
+        r :± fromRelative r (fromAbsolute a p <> fromAbsolute b q)
       where
-        ab = a * b
-        rp = fromAbsolute a p
-        rq = fromAbsolute b q
+        r = a * b
 
     negate (a :± p) = negate a :± p
 
