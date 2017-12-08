@@ -55,11 +55,11 @@ instance Show a => Show (Abs a) where
 
 class Num a => Approximate a where
     -- | Compare two values for equality up to the specified absolute
-    -- uncertainty. The consistency relation is commutative,
+    -- uncertainty. Consistency is commutative but not transitive:
     -- @
     --     consistent t a b === consistent t b a
     -- @
-    -- but it is not transitive
+    -- but
     -- @
     --     consistent t a b && consistent t b c =/=> consistent t a c
     -- @
@@ -70,15 +70,11 @@ class Num a => Approximate a where
         -> Bool
 
     -- | The absolute precision of the type at the given value.
-    -- @absPrecision x@ defines a volume at @x@;
+    -- @absolute x@ defines a volume at @x@;
     -- there are no values except @x@ in that volume, i.e.
-    -- the only solution of
+    -- @y = x@ is the only solution of
     -- @
     --     consistent (absolute x) x y === True
-    -- @
-    -- is @y = x@.
-    -- @
-    --     absolute x === fromRelative x (relative x)
     -- @
     absolute
         :: a  -- ^ value
@@ -93,6 +89,9 @@ class Num a => Approximate a where
 
     -- | At the given point, convert a relative uncertainty to an absolute
     -- uncertainty.
+    -- @
+    --     absolute x === fromRelative x (relative x)
+    -- @
     fromRelative
         :: a  -- ^ value
         -> Rel a  -- ^ absolute precision
@@ -100,6 +99,9 @@ class Num a => Approximate a where
 
     -- | At the given point, convert an absolute uncertainty to a relative
     -- uncertainty.
+    -- @
+    --     relative x === fromAbsolute x (absolute x)
+    -- @
     fromAbsolute
         :: a  -- ^ value
         -> Abs a  -- ^ relative precision
