@@ -16,6 +16,7 @@ specific language governing permissions and limitations under the License.
 -}
 
 
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Approximate where
@@ -68,44 +69,52 @@ instance Show a => Show (Abs a) where
     show (Abs a) = show a
 
 
-class Num a => Approximate a where
+-- | At the given point, convert a relative uncertainty to an absolute
+-- uncertainty.
+fromRelative
+    :: (Approximate a, Num a, Ord a)
+    => a  -- ^ value
+    -> Rel a  -- ^ absolute precision
+    -> Abs a  -- ^ relative precision
+fromRelative x (Rel t) =
+    Abs (max (unAbs (absolute x)) (abs x * t))
+
+-- | At the given point, convert an absolute uncertainty to a relative
+-- uncertainty.
+fromAbsolute
+    :: (Approximate a, Fractional a, Ord a)
+    => a  -- ^ value
+    -> Abs a  -- ^ absolute precision
+    -> Rel a  -- ^ relative precision
+fromAbsolute x (Abs t) = Rel (min (unRel (relative x)) (t / abs x))
+
+
+class Approximate a where
     -- | The absolute precision of the type at the given value.
     -- @absolute x@ defines a volume at @x@;
     -- there are no values except @x@ in that volume, i.e.
     -- @y = x@ is the only solution of
     -- @
-    --     consistent (absolute x) x y === True
+    --     consistent (x ± absolute x) (y ± mempty) === True
+    -- @
+    -- @
+    --     absolute x === fromRelative x (relative x)
     -- @
     absolute
         :: a  -- ^ value
         -> Abs a  -- ^ absolute precision
+    default absolute :: (Num a, Ord a) => a -> Abs a
     absolute x = fromRelative x (relative x)
 
     -- | The relative precision of the type at the given value.
-    relative
-        :: a  -- ^ value
-        -> Rel a  -- ^ relative precision
-    relative x = fromAbsolute x (absolute x)
-
-    -- | At the given point, convert a relative uncertainty to an absolute
-    -- uncertainty.
-    -- @
-    --     absolute x === fromRelative x (relative x)
-    -- @
-    fromRelative
-        :: a  -- ^ value
-        -> Rel a  -- ^ absolute precision
-        -> Abs a  -- ^ relative precision
-
-    -- | At the given point, convert an absolute uncertainty to a relative
-    -- uncertainty.
     -- @
     --     relative x === fromAbsolute x (absolute x)
     -- @
-    fromAbsolute
+    relative
         :: a  -- ^ value
-        -> Abs a  -- ^ relative precision
-        -> Rel a  -- ^ absolute precision
+        -> Rel a  -- ^ relative precision
+    default relative :: (Fractional a, Ord a) => a -> Rel a
+    relative x = fromAbsolute x (absolute x)
 
 
 -- Helpers for IEEE types
@@ -115,52 +124,27 @@ absoluteIEEE :: (IEEE a, Num a) => a -> Abs a
 absoluteIEEE x = Abs (abs (succIEEE x - x))
 
 
-relativeIEEE :: (IEEE a, Num a) => a -> Rel a
-relativeIEEE 0 = Rel 1
-relativeIEEE _ = Rel epsilon
-
-
-fromRelativeIEEE :: (Approximate a, IEEE a, Num a) => a -> Rel a -> Abs a
-fromRelativeIEEE x (Rel tol) = Abs (max (unAbs (absolute x)) (abs x * tol))
-
-
-fromAbsoluteIEEE :: (Approximate a, IEEE a, Num a) => a -> Abs a -> Rel a
-fromAbsoluteIEEE x (Abs tol) = Rel (min (unRel (relative x)) (tol / abs x))
-
-
 instance Approximate Double where
     absolute = absoluteIEEE
-    relative = relativeIEEE
-    fromRelative = fromRelativeIEEE
-    fromAbsolute = fromAbsoluteIEEE
 
 
 instance Approximate Float where
     absolute = absoluteIEEE
-    relative = relativeIEEE
-    fromRelative = fromRelativeIEEE
-    fromAbsolute = fromAbsoluteIEEE
 
 
 instance Approximate CDouble where
     absolute = absoluteIEEE
-    relative = relativeIEEE
-    fromRelative = fromRelativeIEEE
-    fromAbsolute = fromAbsoluteIEEE
 
 
 instance Approximate CFloat where
     absolute = absoluteIEEE
-    relative = relativeIEEE
-    fromRelative = fromRelativeIEEE
-    fromAbsolute = fromAbsoluteIEEE
 
 
 data Approx a = (:±) !a !(Abs a)
 
 infix 7 :±
 
-instance Approximate a => Num (Approx a) where
+instance (Approximate a, Fractional a, Num a, Ord a) => Num (Approx a) where
     (a :± p) + (b :± q) = (a + b) :± (p <> q)
 
     (a :± p) - (b :± q) = (a - b) :± (p <> q)
