@@ -72,7 +72,7 @@ class Num a => Approximate a where
     -- | Compare two values for equality up to the specified absolute
     -- uncertainty. Consistency is commutative but not transitive:
     -- @
-    --     consistent t a b === consistent t b a
+    --     consistent t a b <===> consistent t b a
     -- @
     -- but
     -- @
