@@ -21,6 +21,7 @@ specific language governing permissions and limitations under the License.
 module Approximate where
 
 import Data.Complex ( Complex(..) )
+import Data.Semigroup
 import Foreign.C.Types ( CDouble, CFloat )
 import Numeric.IEEE ( IEEE(..) )
 
@@ -28,6 +29,13 @@ import Numeric.IEEE ( IEEE(..) )
 -- | Relative uncertainty
 newtype Rel a = Rel { unRel :: a }
   deriving (Eq, Num, Ord)
+
+instance Num a => Semigroup (Rel a) where
+    (<>) (Rel a) (Rel b) = Rel (a + b)
+
+instance Num a => Monoid (Rel a) where
+    mappend = (<>)
+    mempty = Rel 0
 
 instance Read a => Read (Rel a) where
     readsPrec prec str =
@@ -42,6 +50,13 @@ instance Show a => Show (Rel a) where
 -- | Absolute uncertainty
 newtype Abs a = Abs { unAbs :: a }
   deriving (Eq, Num, Ord)
+
+instance Num a => Semigroup (Abs a) where
+    (<>) (Abs a) (Abs b) = Abs (a + b)
+
+instance Num a => Monoid (Abs a) where
+    mappend = (<>)
+    mempty = Abs 0
 
 instance Read a => Read (Abs a) where
     readsPrec prec str =
