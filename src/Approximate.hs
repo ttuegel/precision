@@ -21,8 +21,8 @@ specific language governing permissions and limitations under the License.
 
 module Approximate
     (
-      Abs, unAbs,
-      Rel, unRel,
+      Abs, toAbs, unAbs,
+      Rel, toRel, unRel,
       Approximate(..), fromAbsolute, fromRelative,
       Approx, approx, (±), value, uncertainty, consistent
     ) where
@@ -54,6 +54,10 @@ instance Show a => Show (Rel a) where
     show (Rel a) = show a
 
 
+toRel :: Num a => a -> Rel a
+toRel = Rel . abs
+
+
 -- | Absolute uncertainty
 newtype Abs a = Abs { unAbs :: a }
   deriving (Eq, Num, Ord)
@@ -75,6 +79,10 @@ instance Show a => Show (Abs a) where
     show (Abs a) = show a
 
 
+toAbs :: Num a => a -> Abs a
+toAbs = Abs . abs
+
+
 -- | At the given point, convert a relative uncertainty to an absolute
 -- uncertainty.
 fromRelative
@@ -82,8 +90,7 @@ fromRelative
     => a  -- ^ value
     -> Rel a  -- ^ absolute precision
     -> Abs a  -- ^ relative precision
-fromRelative x (Rel t) =
-    Abs (max (unAbs (absolute x)) (abs x * t))
+fromRelative x (Rel t) = max (absolute x) (toAbs (x * t))
 
 -- | At the given point, convert an absolute uncertainty to a relative
 -- uncertainty.
@@ -92,7 +99,7 @@ fromAbsolute
     => a  -- ^ value
     -> Abs a  -- ^ absolute precision
     -> Rel a  -- ^ relative precision
-fromAbsolute x (Abs t) = Rel (min (unRel (relative x)) (t / abs x))
+fromAbsolute x (Abs t) = max (relative x) (toRel (t / x))
 
 
 class Approximate a where
@@ -127,7 +134,7 @@ class Approximate a where
 
 
 absoluteIEEE :: (IEEE a, Num a) => a -> Abs a
-absoluteIEEE x = Abs (abs (succIEEE x - x))
+absoluteIEEE x = toAbs (succIEEE x - x)
 
 
 instance Approximate Double where
@@ -176,7 +183,7 @@ approx x = x :± absolute x
 
 
 (±) :: Num a => a -> a -> Approx a
-a ± p = a :± Abs (abs p)
+a ± p = a :± toAbs p
 
 infix 7 ±
 
