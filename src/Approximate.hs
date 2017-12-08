@@ -187,6 +187,19 @@ instance (Approximate a, Fractional a, Num a, Ord a) => Num (Approx a) where
 
     fromInteger = exact . fromInteger
 
+instance (Approximate a, Fractional a, Ord a) => Fractional (Approx a) where
+    (a :± p) / (b :± q) =
+        r :± fromRelative r (fromAbsolute a p <> fromAbsolute b q)
+      where
+        r = a / b
+
+    recip (a :± p) =
+        r :± fromRelative r (fromAbsolute a p)
+      where
+        r = recip a
+
+    fromRational = exact . fromRational
+
 
 -- | An exact value with no uncertainty, except the uncertainty inherent
 -- in the representation.
