@@ -16,6 +16,8 @@ specific language governing permissions and limitations under the License.
 -}
 
 
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Approximate where
 
 import Data.Complex ( Complex(..) )
@@ -25,10 +27,30 @@ import Numeric.IEEE ( IEEE(..) )
 
 -- | Relative uncertainty
 newtype Rel a = Rel { unRel :: a }
+  deriving (Eq, Num, Ord)
+
+instance Read a => Read (Rel a) where
+    readsPrec prec str =
+      do
+        (a, rest) <- readsPrec prec str
+        pure (Rel a, rest)
+
+instance Show a => Show (Rel a) where
+    show (Rel a) = show a
 
 
 -- | Absolute uncertainty
 newtype Abs a = Abs { unAbs :: a }
+  deriving (Eq, Num, Ord)
+
+instance Read a => Read (Abs a) where
+    readsPrec prec str =
+      do
+        (a, rest) <- readsPrec prec str
+        pure (Abs a, rest)
+
+instance Show a => Show (Abs a) where
+    show (Abs a) = show a
 
 
 class Num a => Approximate a where
