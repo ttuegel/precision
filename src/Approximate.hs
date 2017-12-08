@@ -175,6 +175,16 @@ a ± p = a :± Abs (abs p)
 infix 7 ±
 
 
+-- | Retrieve the approximate value.
+value :: Approx a -> a
+value (a :± _) = a
+
+
+-- | Report the approximation uncertainty.
+uncertainty :: Approx a -> Abs a
+uncertainty (_ :± u) = u
+
+
 -- | Compare two approximate values for equality up to the specified absolute
 -- uncertainty. Consistency is commutative but not transitive:
 -- @
