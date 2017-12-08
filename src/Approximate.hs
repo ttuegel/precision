@@ -182,8 +182,10 @@ approx :: Approximate a => a -> Approx a
 approx x = x :± absolute x
 
 
-(±) :: Num a => a -> a -> Approx a
-a ± p = a :± toAbs p
+(±) :: (Approximate a, Num a, Ord a) => a -> a -> Approx a
+a ± p =
+    -- The actual uncertainty cannot be less than the actual precision
+    a :± max (absolute a) (toAbs p)
 
 infix 7 ±
 
