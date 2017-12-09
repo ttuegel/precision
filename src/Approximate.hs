@@ -39,15 +39,22 @@ data Uncertainty a = Uncertainty { leftUncertainty, rightUncertainty :: !a }
 toUncertainty :: Num a => a -> a -> Uncertainty a
 toUncertainty el er = Uncertainty (abs el) (abs er)
 
-instance Num a => Semigroup (Uncertainty a) where
-    (<>) a b =
-        Uncertainty
-        (leftUncertainty a + leftUncertainty b)
-        (rightUncertainty a + rightUncertainty b)
+instance Num a => Num (Uncertainty a) where
+    (+) (Uncertainty al ar) (Uncertainty bl br) =
+        Uncertainty (al + bl) (ar + br)
 
-instance Num a => Monoid (Uncertainty a) where
-    mappend = (<>)
-    mempty = Uncertainty 0 0
+    (*) (Uncertainty al ar) (Uncertainty bl br) =
+        Uncertainty (al * bl) (ar * br)
+
+    negate ε = Uncertainty (rightUncertainty ε) (leftUncertainty ε)
+
+    abs = id
+
+    signum _ = Uncertainty 1 1
+
+    fromInteger i = Uncertainty x x
+      where
+        x = abs (fromInteger i)
 
 
 (*.) :: (Num a, Ord a) => Uncertainty a -> a -> Uncertainty a
@@ -132,30 +139,22 @@ instance (Num a, Ord a) => Eq (Approx a) where
         | otherwise = x₁ - x₂ <= rightUncertainty ε₂ + leftUncertainty ε₁
 
 instance (Precision a, Num a, Ord a) => Num (Approx a) where
-    (x₁ :± ε₁) + (x₂ :± ε₂) = (x₁ + x₂) :± (ε₁ <> ε₂)
+    (x₁ :± ε₁) + (x₂ :± ε₂) = (x₁ + x₂) :± (ε₁ + ε₂)
 
-    (x₁ :± ε₁) - (x₂ :± ε₂) = (x₁ - x₂) :± (ε₁ <> ε₂)
+    (x₁ :± ε₁) - (x₂ :± ε₂) = (x₁ - x₂) :± (ε₁ - ε₂)
 
-    (x₁ :± ε₁) * (x₂ :± ε₂) =
-        x :± ε
-      where
-        x = x₁ * x₂
-        ε = (ε₁ *. x₂) <> (ε₂ *. x₁)
+    (x₁ :± ε₁) * (x₂ :± ε₂) = (x₁ * x₂) :± (ε₁ *. x₂ + ε₂ *. x₁)
 
     negate (a :± p) = negate a :± p
 
     abs (a :± p) = abs a :± p
 
-    signum (a :± _) = signum a :± mempty
+    signum (a :± _) = signum a :± 0
 
     fromInteger = exact . fromInteger
 
 instance (Precision a, Fractional a, Ord a) => Fractional (Approx a) where
-    (x₁ :± ε₁) / (x₂ :± ε₂) =
-        x :± ε
-      where
-        x = x₁ / x₂
-        ε = (ε₁ /. x₂) <> (ε₂ *. x₁)
+    (x₁ :± ε₁) / (x₂ :± ε₂) = (x₁ / x₂) :± (ε₁ /. x₂ + ε₂ *. x₁)
 
     recip (x₁ :± ε₁) =
         x :± ε
