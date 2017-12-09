@@ -143,7 +143,7 @@ instance (Precision a, Num a, Ord a) => Num (Approx a) where
 
     (x₁ :± ε₁) - (x₂ :± ε₂) = (x₁ - x₂) :± (ε₁ - ε₂)
 
-    (x₁ :± ε₁) * (x₂ :± ε₂) = (x₁ * x₂) :± (ε₁ *. x₂ + ε₂ *. x₁)
+    (x₁ :± ε₁) * (x₂ :± ε₂) = (x₁ * x₂) :± (ε₁ *. x₂ + ε₂ *. x₁ + ε₁ * ε₂)
 
     negate (a :± p) = negate a :± p
 
@@ -153,14 +153,19 @@ instance (Precision a, Num a, Ord a) => Num (Approx a) where
 
     fromInteger = exact . fromInteger
 
+-- | Note: @recip x@ is more accurate that @1 / x@.
 instance (Precision a, Fractional a, Ord a) => Fractional (Approx a) where
-    (x₁ :± ε₁) / (x₂ :± ε₂) = (x₁ / x₂) :± (ε₁ /. x₂ + ε₂ *. x₁)
+    (x₁ :± ε₁) / (x₂ :± ε₂) =
+        x :± ε
+      where
+        x = x₁ / x₂
+        ε = (ε₁ - ε₂ *. x - (ε₁ * ε₂) /. x₂) /. x₂
 
     recip (x₁ :± ε₁) =
         x :± ε
       where
         x = recip x₁
-        ε = ε₁ *. x *. x
+        ε = negate ε₁ *. x *. x
 
     fromRational = exact . fromRational
 
