@@ -22,7 +22,7 @@ specific language governing permissions and limitations under the License.
 
 module Approximate
     (
-      Uncertainty(..),
+      Uncertainty, toUncertainty, leftUncertainty, rightUncertainty,
       Precision(..),
       Approx, exact, (±), value, uncertainty
     ) where
@@ -34,19 +34,21 @@ import Numeric.IEEE ( IEEE(..) )
 
 
 -- | Absolute uncertainty
-data Uncertainty a = Uncertainty { left, right :: !a }
+data Uncertainty a = Uncertainty { leftUncertainty, rightUncertainty :: !a }
   deriving (Eq, Functor)
+
+toUncertainty :: Num a => a -> a -> Uncertainty a
+toUncertainty el er = Uncertainty (abs el) (abs er)
 
 instance Num a => Semigroup (Uncertainty a) where
     (<>) a b =
-        Uncertainty {
-          left = left a + left b,
-          right = right a + right b
-        }
+        Uncertainty
+        (leftUncertainty a + leftUncertainty b)
+        (rightUncertainty a + rightUncertainty b)
 
 instance Num a => Monoid (Uncertainty a) where
     mappend = (<>)
-    mempty = Uncertainty { left = 0, right = 0 }
+    mempty = Uncertainty 0 0
 
 
 class Precision a where
@@ -69,7 +71,7 @@ class Precision a where
 
 
 precisionIEEE :: (IEEE a, Num a) => a -> Uncertainty a
-precisionIEEE x = Uncertainty { left = x - predIEEE x, right = succIEEE x - x }
+precisionIEEE x = toUncertainty (x - predIEEE x) (succIEEE x - x)
 
 
 instance Precision Double where
@@ -103,8 +105,8 @@ infix 7 :±
 -- @
 instance (Num a, Ord a) => Eq (Approx a) where
     (==) (x₁ :± ε₁) (x₂ :± ε₂)
-        | x₁ <= x₂ = x₂ - x₁ <= right ε₁ + left ε₂
-        | otherwise = x₁ - x₂ <= right ε₂ + left ε₁
+        | x₁ <= x₂  = x₂ - x₁ <= rightUncertainty ε₁ + leftUncertainty ε₂
+        | otherwise = x₁ - x₂ <= rightUncertainty ε₂ + leftUncertainty ε₁
 
 instance (Precision a, Num a) => Num (Approx a) where
     (x₁ :± ε₁) + (x₂ :± ε₂) = (x₁ + x₂) :± (ε₁ <> ε₂)
@@ -159,8 +161,8 @@ x ± ε₁ =
     εmin = precision x
     εabs = abs ε₁
     ε = Uncertainty {
-          left = max (left εmin) εabs,
-          right = max (right εmin) εabs
+          leftUncertainty = max (leftUncertainty εmin) εabs,
+          rightUncertainty = max (rightUncertainty εmin) εabs
         }
 
 infix 7 ±
