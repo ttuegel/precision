@@ -17,14 +17,14 @@ specific language governing permissions and limitations under the License.
 
 
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Approximate
     (
-      Abs, toAbs, unAbs,
-      Rel, toRel, unRel,
-      Approximate(..), fromAbsolute, fromRelative,
-      Approx, exact, (±), value, uncertainty, consistent
+      Abs(..),
+      Approximate(..),
+      Approx, exact, (±), value, uncertainty
     ) where
 
 import Data.Complex ( Complex(..) )
@@ -33,77 +33,20 @@ import Foreign.C.Types ( CDouble, CFloat )
 import Numeric.IEEE ( IEEE(..) )
 
 
--- | Relative uncertainty
-newtype Rel a = Rel { unRel :: a }
-  deriving (Eq, Num, Ord)
-
-instance Num a => Semigroup (Rel a) where
-    (<>) (Rel a) (Rel b) = Rel (a + b)
-
-instance Num a => Monoid (Rel a) where
-    mappend = (<>)
-    mempty = Rel 0
-
-instance Read a => Read (Rel a) where
-    readsPrec prec str =
-      do
-        (a, rest) <- readsPrec prec str
-        pure (Rel a, rest)
-
-instance Show a => Show (Rel a) where
-    show (Rel a) = show a
-
-
-toRel :: Num a => a -> Rel a
-toRel = Rel . abs
-
-
 -- | Absolute uncertainty
-newtype Abs a = Abs { unAbs :: a }
-  deriving (Eq, Num, Ord)
+data Abs a = Abs { leftAbs, rightAbs :: !a }
+  deriving (Eq, Functor)
 
 instance Num a => Semigroup (Abs a) where
-    (<>) (Abs a) (Abs b) = Abs (a + b)
+    (<>) a b =
+        Abs {
+          leftAbs = leftAbs a + leftAbs b,
+          rightAbs = rightAbs a + rightAbs b
+        }
 
 instance Num a => Monoid (Abs a) where
     mappend = (<>)
-    mempty = Abs 0
-
-instance Read a => Read (Abs a) where
-    readsPrec prec str =
-      do
-        (a, rest) <- readsPrec prec str
-        pure (Abs a, rest)
-
-instance Show a => Show (Abs a) where
-    show (Abs a) = show a
-
-
-toAbs :: Num a => a -> Abs a
-toAbs = Abs . abs
-
-
--- | At the given point, convert a relative uncertainty to an absolute
--- uncertainty. The absolute uncertainty at @x@ does not exceed @toAbs x@,
--- which represents total uncertainty.
-fromRelative
-    :: (Approximate a, Num a, Ord a)
-    => a  -- ^ value
-    -> Rel a  -- ^ absolute precision
-    -> Abs a  -- ^ relative precision
-fromRelative x (Rel t) =
-    min (toAbs x) (max (absolute x) (toAbs (x * t)))
-
--- | At the given point, convert an absolute uncertainty to a relative
--- uncertainty. The relative uncertainty does not exceed @toRel 1@,
--- which represents total uncertainty.
-fromAbsolute
-    :: (Approximate a, Fractional a, Ord a)
-    => a  -- ^ value
-    -> Abs a  -- ^ absolute precision
-    -> Rel a  -- ^ relative precision
-fromAbsolute x (Abs t) =
-    min (toRel 1) (max (relative x) (toRel (t / x)))
+    mempty = Abs { leftAbs = 0, rightAbs = 0 }
 
 
 class Approximate a where
@@ -120,25 +63,13 @@ class Approximate a where
     absolute
         :: a  -- ^ value
         -> Abs a  -- ^ absolute precision
-    default absolute :: (Num a, Ord a) => a -> Abs a
-    absolute x = fromRelative x (relative x)
-
-    -- | The relative precision of the type at the given value.
-    -- @
-    --     relative x === fromAbsolute x (absolute x)
-    -- @
-    relative
-        :: a  -- ^ value
-        -> Rel a  -- ^ relative precision
-    default relative :: (Fractional a, Ord a) => a -> Rel a
-    relative x = fromAbsolute x (absolute x)
 
 
 -- Helpers for IEEE types
 
 
 absoluteIEEE :: (IEEE a, Num a) => a -> Abs a
-absoluteIEEE x = toAbs (succIEEE x - x)
+absoluteIEEE x = Abs { leftAbs = x - predIEEE x, rightAbs = succIEEE x - x }
 
 
 instance Approximate Double where
@@ -161,23 +92,32 @@ data Approx a = (:±) !a !(Abs a)
 
 infix 7 :±
 
-instance (Approximate a, Fractional a, Num a, Ord a) => Num (Approx a) where
-    (a :± p) + (b :± q) =
-        r :± u
-      where
-        r = a + b
-        u = min (toAbs r) (p <> q)
+-- | Compare two approximate values for equality up to the specified absolute
+-- uncertainty. Equality is commutative but not transitive:
+-- @
+--     a == b  <===>  b == a
+-- @
+-- but
+-- @
+--     a == b && b == c  =/=>  a == c
+-- @
+instance (Num a, Ord a) => Eq (Approx a) where
+    (==) (x₁ :± ε₁) (x₂ :± ε₂)
+        | x₁ <= x₂ = x₂ - x₁ <= rightAbs ε₁ + leftAbs ε₂
+        | otherwise = x₁ - x₂ <= rightAbs ε₂ + leftAbs ε₁
 
-    (a :± p) - (b :± q) =
-        r :± u
-      where
-        r = a - b
-        u = min (toAbs r) (p <> q)
+instance (Approximate a, Num a) => Num (Approx a) where
+    (x₁ :± ε₁) + (x₂ :± ε₂) = (x₁ + x₂) :± (ε₁ <> ε₂)
 
-    (a :± p) * (b :± q) =
-        r :± fromRelative r (fromAbsolute a p <> fromAbsolute b q)
+    (x₁ :± ε₁) - (x₂ :± ε₂) = (x₁ - x₂) :± (ε₁ <> ε₂)
+
+    (x₁ :± ε₁) * (x₂ :± ε₂) =
+        x :± ε
       where
-        r = a * b
+        x = x₁ * x₂
+        ε₁₂ = (* x₂) <$> ε₁
+        ε₂₁ = (* x₁) <$> ε₂
+        ε = ε₁₂ <> ε₂₁
 
     negate (a :± p) = negate a :± p
 
@@ -188,15 +128,19 @@ instance (Approximate a, Fractional a, Num a, Ord a) => Num (Approx a) where
     fromInteger = exact . fromInteger
 
 instance (Approximate a, Fractional a, Ord a) => Fractional (Approx a) where
-    (a :± p) / (b :± q) =
-        r :± fromRelative r (fromAbsolute a p <> fromAbsolute b q)
+    (x₁ :± ε₁) / (x₂ :± ε₂) =
+        x :± ε
       where
-        r = a / b
+        x = x₁ / x₂
+        ε₁₂ = (/ x₂) <$> ε₁
+        ε₂₁ = (* x₁) <$> ε₂
+        ε = ε₁₂ <> ε₂₁
 
-    recip (a :± p) =
-        r :± fromRelative r (fromAbsolute a p)
+    recip (x₁ :± ε₁) =
+        x :± ε
       where
-        r = recip a
+        x = recip x₁
+        ε = (\ε₂ -> (ε₂ * x) * x) <$> ε₁
 
     fromRational = exact . fromRational
 
@@ -208,9 +152,16 @@ exact x = x :± absolute x
 
 
 (±) :: (Approximate a, Num a, Ord a) => a -> a -> Approx a
-a ± p =
+x ± ε₁ =
     -- The actual uncertainty cannot be less than the actual precision
-    a :± max (absolute a) (toAbs p)
+    x :± ε
+  where
+    εmin = absolute x
+    εabs = abs ε₁
+    ε = Abs {
+          leftAbs = max (leftAbs εmin) εabs,
+          rightAbs = max (rightAbs εmin) εabs
+        }
 
 infix 7 ±
 
@@ -223,16 +174,3 @@ value (a :± _) = a
 -- | Report the approximation uncertainty.
 uncertainty :: Approx a -> Abs a
 uncertainty (_ :± u) = u
-
-
--- | Compare two approximate values for equality up to the specified absolute
--- uncertainty. Consistency is commutative but not transitive:
--- @
---     consistent a b <===> consistent b a
--- @
--- but
--- @
---     consistent a b && consistent b c =/=> consistent a c
--- @
-consistent :: (Num a, Ord a) => Approx a -> Approx a -> Bool
-consistent (a :± p) (b :± q) = abs (a - b) <= unAbs p + unAbs q
