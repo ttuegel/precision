@@ -22,7 +22,7 @@ specific language governing permissions and limitations under the License.
 
 module Approximate
     (
-      Abs(..),
+      Uncertainty(..),
       Approximate(..),
       Approx, exact, (±), value, uncertainty
     ) where
@@ -34,19 +34,19 @@ import Numeric.IEEE ( IEEE(..) )
 
 
 -- | Absolute uncertainty
-data Abs a = Abs { leftAbs, rightAbs :: !a }
+data Uncertainty a = Uncertainty { left, right :: !a }
   deriving (Eq, Functor)
 
-instance Num a => Semigroup (Abs a) where
+instance Num a => Semigroup (Uncertainty a) where
     (<>) a b =
-        Abs {
-          leftAbs = leftAbs a + leftAbs b,
-          rightAbs = rightAbs a + rightAbs b
+        Uncertainty {
+          left = left a + left b,
+          right = right a + right b
         }
 
-instance Num a => Monoid (Abs a) where
+instance Num a => Monoid (Uncertainty a) where
     mappend = (<>)
-    mempty = Abs { leftAbs = 0, rightAbs = 0 }
+    mempty = Uncertainty { left = 0, right = 0 }
 
 
 class Approximate a where
@@ -62,7 +62,7 @@ class Approximate a where
     -- @
     absolute
         :: a  -- ^ value
-        -> Abs a  -- ^ absolute precision
+        -> Uncertainty a  -- ^ absolute precision
 
 
 -- Helpers for IEEE types
@@ -88,7 +88,7 @@ instance Approximate CFloat where
     absolute = absoluteIEEE
 
 
-data Approx a = (:±) !a !(Abs a)
+data Approx a = (:±) !a !(Uncertainty a)
 
 infix 7 :±
 
@@ -103,8 +103,8 @@ infix 7 :±
 -- @
 instance (Num a, Ord a) => Eq (Approx a) where
     (==) (x₁ :± ε₁) (x₂ :± ε₂)
-        | x₁ <= x₂ = x₂ - x₁ <= rightAbs ε₁ + leftAbs ε₂
-        | otherwise = x₁ - x₂ <= rightAbs ε₂ + leftAbs ε₁
+        | x₁ <= x₂ = x₂ - x₁ <= right ε₁ + left ε₂
+        | otherwise = x₁ - x₂ <= right ε₂ + left ε₁
 
 instance (Approximate a, Num a) => Num (Approx a) where
     (x₁ :± ε₁) + (x₂ :± ε₂) = (x₁ + x₂) :± (ε₁ <> ε₂)
@@ -158,9 +158,9 @@ x ± ε₁ =
   where
     εmin = absolute x
     εabs = abs ε₁
-    ε = Abs {
-          leftAbs = max (leftAbs εmin) εabs,
-          rightAbs = max (rightAbs εmin) εabs
+    ε = Uncertainty {
+          left = max (left εmin) εabs,
+          right = max (right εmin) εabs
         }
 
 infix 7 ±
@@ -168,9 +168,9 @@ infix 7 ±
 
 -- | Retrieve the approximate value.
 value :: Approx a -> a
-value (a :± _) = a
+value (x :± _) = x
 
 
 -- | Report the approximation uncertainty.
-uncertainty :: Approx a -> Abs a
-uncertainty (_ :± u) = u
+uncertainty :: Approx a -> Uncertainty a
+uncertainty (_ :± ε) = ε
