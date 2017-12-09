@@ -17,7 +17,6 @@ specific language governing permissions and limitations under the License.
 
 
 {-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Approximate
@@ -35,7 +34,7 @@ import Numeric.IEEE ( IEEE(..) )
 
 -- | Absolute uncertainty
 data Uncertainty a = Uncertainty { leftUncertainty, rightUncertainty :: !a }
-  deriving (Eq, Functor)
+  deriving (Eq)
 
 toUncertainty :: Num a => a -> a -> Uncertainty a
 toUncertainty el er = Uncertainty (abs el) (abs er)
@@ -49,6 +48,30 @@ instance Num a => Semigroup (Uncertainty a) where
 instance Num a => Monoid (Uncertainty a) where
     mappend = (<>)
     mempty = Uncertainty 0 0
+
+
+(*.) :: (Num a, Ord a) => Uncertainty a -> a -> Uncertainty a
+(*.) ε r
+    | r < 0 = Uncertainty εr εl
+    | otherwise = Uncertainty εl εr
+  where
+    rabs = abs r
+    εl = leftUncertainty ε * rabs
+    εr = rightUncertainty ε * rabs
+
+infixl 7 *.
+
+
+(/.) :: (Fractional a, Num a, Ord a) => Uncertainty a -> a -> Uncertainty a
+(/.) ε r
+    | r < 0 = Uncertainty εr εl
+    | otherwise = Uncertainty εl εr
+  where
+    rabs = abs r
+    εl = leftUncertainty ε / rabs
+    εr = rightUncertainty ε / rabs
+
+infixl 7 /.
 
 
 class Precision a where
@@ -108,7 +131,7 @@ instance (Num a, Ord a) => Eq (Approx a) where
         | x₁ <= x₂  = x₂ - x₁ <= rightUncertainty ε₁ + leftUncertainty ε₂
         | otherwise = x₁ - x₂ <= rightUncertainty ε₂ + leftUncertainty ε₁
 
-instance (Precision a, Num a) => Num (Approx a) where
+instance (Precision a, Num a, Ord a) => Num (Approx a) where
     (x₁ :± ε₁) + (x₂ :± ε₂) = (x₁ + x₂) :± (ε₁ <> ε₂)
 
     (x₁ :± ε₁) - (x₂ :± ε₂) = (x₁ - x₂) :± (ε₁ <> ε₂)
@@ -117,9 +140,7 @@ instance (Precision a, Num a) => Num (Approx a) where
         x :± ε
       where
         x = x₁ * x₂
-        ε₁₂ = (* x₂) <$> ε₁
-        ε₂₁ = (* x₁) <$> ε₂
-        ε = ε₁₂ <> ε₂₁
+        ε = (ε₁ *. x₂) <> (ε₂ *. x₁)
 
     negate (a :± p) = negate a :± p
 
@@ -134,15 +155,13 @@ instance (Precision a, Fractional a, Ord a) => Fractional (Approx a) where
         x :± ε
       where
         x = x₁ / x₂
-        ε₁₂ = (/ x₂) <$> ε₁
-        ε₂₁ = (* x₁) <$> ε₂
-        ε = ε₁₂ <> ε₂₁
+        ε = (ε₁ /. x₂) <> (ε₂ *. x₁)
 
     recip (x₁ :± ε₁) =
         x :± ε
       where
         x = recip x₁
-        ε = (\ε₂ -> (ε₂ * x) * x) <$> ε₁
+        ε = ε₁ *. x *. x
 
     fromRational = exact . fromRational
 
