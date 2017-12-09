@@ -23,7 +23,7 @@ specific language governing permissions and limitations under the License.
 module Approximate
     (
       Uncertainty(..),
-      Approximate(..),
+      Precision(..),
       Approx, exact, (±), value, uncertainty
     ) where
 
@@ -49,7 +49,7 @@ instance Num a => Monoid (Uncertainty a) where
     mempty = Uncertainty { left = 0, right = 0 }
 
 
-class Approximate a where
+class Precision a where
     -- | The absolute precision of the type at the given value.
     -- @absolute x@ defines a volume at @x@;
     -- there are no values except @x@ in that volume, i.e.
@@ -60,7 +60,7 @@ class Approximate a where
     -- @
     --     absolute x === fromRelative x (relative x)
     -- @
-    absolute
+    precision
         :: a  -- ^ value
         -> Uncertainty a  -- ^ absolute precision
 
@@ -68,24 +68,24 @@ class Approximate a where
 -- Helpers for IEEE types
 
 
-absoluteIEEE :: (IEEE a, Num a) => a -> Abs a
-absoluteIEEE x = Abs { leftAbs = x - predIEEE x, rightAbs = succIEEE x - x }
+precisionIEEE :: (IEEE a, Num a) => a -> Uncertainty a
+precisionIEEE x = Uncertainty { left = x - predIEEE x, right = succIEEE x - x }
 
 
-instance Approximate Double where
-    absolute = absoluteIEEE
+instance Precision Double where
+    precision = precisionIEEE
 
 
-instance Approximate Float where
-    absolute = absoluteIEEE
+instance Precision Float where
+    precision = precisionIEEE
 
 
-instance Approximate CDouble where
-    absolute = absoluteIEEE
+instance Precision CDouble where
+    precision = precisionIEEE
 
 
-instance Approximate CFloat where
-    absolute = absoluteIEEE
+instance Precision CFloat where
+    precision = precisionIEEE
 
 
 data Approx a = (:±) !a !(Uncertainty a)
@@ -106,7 +106,7 @@ instance (Num a, Ord a) => Eq (Approx a) where
         | x₁ <= x₂ = x₂ - x₁ <= right ε₁ + left ε₂
         | otherwise = x₁ - x₂ <= right ε₂ + left ε₁
 
-instance (Approximate a, Num a) => Num (Approx a) where
+instance (Precision a, Num a) => Num (Approx a) where
     (x₁ :± ε₁) + (x₂ :± ε₂) = (x₁ + x₂) :± (ε₁ <> ε₂)
 
     (x₁ :± ε₁) - (x₂ :± ε₂) = (x₁ - x₂) :± (ε₁ <> ε₂)
@@ -127,7 +127,7 @@ instance (Approximate a, Num a) => Num (Approx a) where
 
     fromInteger = exact . fromInteger
 
-instance (Approximate a, Fractional a, Ord a) => Fractional (Approx a) where
+instance (Precision a, Fractional a, Ord a) => Fractional (Approx a) where
     (x₁ :± ε₁) / (x₂ :± ε₂) =
         x :± ε
       where
@@ -147,16 +147,16 @@ instance (Approximate a, Fractional a, Ord a) => Fractional (Approx a) where
 
 -- | An exact value with no uncertainty, except the uncertainty inherent
 -- in the representation.
-exact :: Approximate a => a -> Approx a
-exact x = x :± absolute x
+exact :: Precision a => a -> Approx a
+exact x = x :± precision x
 
 
-(±) :: (Approximate a, Num a, Ord a) => a -> a -> Approx a
+(±) :: (Precision a, Num a, Ord a) => a -> a -> Approx a
 x ± ε₁ =
     -- The actual uncertainty cannot be less than the actual precision
     x :± ε
   where
-    εmin = absolute x
+    εmin = precision x
     εabs = abs ε₁
     ε = Uncertainty {
           left = max (left εmin) εabs,
