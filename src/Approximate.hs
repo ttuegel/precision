@@ -26,7 +26,6 @@ module Approximate
       Approx, exact, (±), value, uncertainty
     ) where
 
-import Data.Complex ( Complex(..) )
 import Data.Semigroup
 import Foreign.C.Types ( CDouble, CFloat )
 import Numeric.IEEE ( IEEE(..) )
