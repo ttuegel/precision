@@ -38,22 +38,13 @@ data Uncertainty a = Uncertainty { leftUncertainty, rightUncertainty :: !a }
 toUncertainty :: Num a => a -> a -> Uncertainty a
 toUncertainty el er = Uncertainty (abs el) (abs er)
 
-instance Num a => Num (Uncertainty a) where
-    (+) (Uncertainty al ar) (Uncertainty bl br) =
+instance Num a => Semigroup (Uncertainty a) where
+    (<>) (Uncertainty al ar) (Uncertainty bl br) =
         Uncertainty (al + bl) (ar + br)
 
-    (*) (Uncertainty al ar) (Uncertainty bl br) =
-        Uncertainty (al * bl) (ar * br)
-
-    negate ε = Uncertainty (rightUncertainty ε) (leftUncertainty ε)
-
-    abs = id
-
-    signum _ = Uncertainty 1 1
-
-    fromInteger i = Uncertainty x x
-      where
-        x = abs (fromInteger i)
+instance Num a => Monoid (Uncertainty a) where
+    mappend = (<>)
+    mempty = Uncertainty 0 0
 
 
 (*.) :: (Num a, Ord a) => Uncertainty a -> a -> Uncertainty a
@@ -137,18 +128,54 @@ instance (Num a, Ord a) => Eq (Approx a) where
         | x₁ <= x₂  = x₂ - x₁ <= rightUncertainty ε₁ + leftUncertainty ε₂
         | otherwise = x₁ - x₂ <= rightUncertainty ε₂ + leftUncertainty ε₁
 
-instance (Precision a, Num a, Ord a) => Num (Approx a) where
-    (x₁ :± ε₁) + (x₂ :± ε₂) = (x₁ + x₂) :± (ε₁ + ε₂)
+-- | Note: To preserve uncertainty bounds and the law @abs x * signum x === x@,
+-- @signum@ never returns @0@. The uncertainty bounds returned by @signum@
+-- must not be taken literally; a non-zero bound only indicates some
+-- uncertainty in that direction.
+instance (Fractional a, Precision a, Num a, Ord a) => Num (Approx a) where
+    (x₁ :± ε₁) + (x₂ :± ε₂) = (x₁ + x₂) :± (ε₁ <> ε₂)
 
-    (x₁ :± ε₁) - (x₂ :± ε₂) = (x₁ - x₂) :± (ε₁ - ε₂)
+    (x₁ :± ε₁) - (x₂ :± ε₂) = (x₁ - x₂) :± (ε₁ <> ε₂ *. (-1))
 
-    (x₁ :± ε₁) * (x₂ :± ε₂) = (x₁ * x₂) :± (ε₁ *. x₂ + ε₂ *. x₁ + ε₁ * ε₂)
+    (x₁ :± ε₁) * (x₂ :± ε₂) = (x₁ * x₂) :± (ε₁ *. x₂ <> ε₂ *. x₁)
 
-    negate (a :± p) = negate a :± p
+    negate (a :± p) = negate a :± (p *. (-1))
 
-    abs (a :± p) = abs a :± p
+    abs (x :± ε) =
+        xabs :± ε'
+      where
+        xabs = abs x
+        εl = leftUncertainty ε
+        εr = rightUncertainty ε
+        ε'
+          | signum x >= 0   =
+              Uncertainty
+              (min xabs εl)
+              (max (εl - 2 * xabs) εr)
+          | otherwise =
+              Uncertainty
+              (min xabs εr)
+              (max (εr - 2 * xabs) εl)
 
-    signum (a :± _) = signum a :± 0
+    signum (x :± ε) =
+        sgn :± ε'
+      where
+        εl = leftUncertainty ε
+        εr = rightUncertainty ε
+        xabs = abs x
+        sgn
+          | signum x >= 0 =  1
+          | otherwise     = -1
+        ε'
+          | xabs == 0 = mempty
+          | sgn > 0   =
+              Uncertainty
+              (max 0 (εl / xabs - 1))
+              (max 0 (2 + (εr - εl) / xabs))
+          | otherwise =
+              Uncertainty
+              (max 0 (2 + (εl - εr) / xabs))
+              (max 0 (εr / xabs - 1))
 
     fromInteger = exact . fromInteger
 
@@ -158,15 +185,48 @@ instance (Precision a, Fractional a, Ord a) => Fractional (Approx a) where
         x :± ε
       where
         x = x₁ / x₂
-        ε = (ε₁ - ε₂ *. x - (ε₁ * ε₂) /. x₂) /. x₂
+        ε = ε₁ /. x₂ <> ε₂ *. (negate x / x₂)
 
     recip (x₁ :± ε₁) =
         x :± ε
       where
         x = recip x₁
-        ε = negate ε₁ *. x *. x
+        ε = ε₁ *. (negate x * x)
 
     fromRational = exact . fromRational
+
+instance (Floating a, Precision a, Ord a) => Floating (Approx a) where
+    pi = exact pi
+
+    exp (x :± ε) = let y = exp x in y :± (ε *. y)
+
+    log (x :± ε) = log x :± (ε /. x)
+
+    sqrt (x :± ε) = let y = sqrt x in y :± (ε /. (2 * y))
+
+    sin (x :± ε) = sin x :± (ε *. cos x)
+
+    cos (x :± ε) = cos x :± (ε *. negate (sin x))
+
+    tan (x :± ε) = let y = tan x in y :± (ε *. (1 + y * y))
+
+    asin (x :± ε) = asin x :± (ε /. (sqrt (1 - x * x)))
+
+    acos (x :± ε) = acos x :± (ε /. (negate . sqrt) (1 - x * x))
+
+    atan (x :± ε) = atan x :± (ε /. (1 + x * x))
+
+    sinh (x :± ε) = sinh x :± (ε *. cosh x)
+
+    cosh (x :± ε) = cosh x :± (ε *. sinh x)
+
+    tanh (x :± ε) = let y = tanh x in y :± (ε *. (1 - y * y))
+
+    asinh (x :± ε) = asinh x :± (ε /. sqrt (1 + x * x))
+
+    acosh (x :± ε) = acosh x :± (ε /. sqrt (x * x - 1))
+
+    atanh (x :± ε) = atanh x :± (ε /. (1 - x * x))
 
 
 -- | An exact value with no uncertainty, except the uncertainty inherent
