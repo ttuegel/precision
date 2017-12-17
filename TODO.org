@@ -1,0 +1,39 @@
+* Features
+
+** Data.Approx
+   :PROPERTIES:
+   :ORDERED:  t
+   :END:
+
+*** TODO instance Num
+
+**** DONE Implementation
+
+**** TODO Test cases
+
+*** TODO instance Fractional
+
+**** TODO Implementation
+
+**** TODO Test cases
+
+*** TODO instance RealFloat
+
+**** TODO Implementation
+
+**** TODO Test cases
+
+** Numeric.Precision
+
+*** TODO Floating-point instances
+
+**** DONE Implementation
+
+**** TODO Test cases
+
+*** TODO Rational instances
+
+**** TODO Implementation
+
+**** TODO Test cases
+
