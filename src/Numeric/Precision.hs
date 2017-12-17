@@ -46,19 +46,14 @@ class Ord a => Precision a where
 -- (round to nearest, ties to even).
 precisionIEEE :: IEEE r => r -> Interval r
 precisionIEEE x
-  | evenSignificand x =
+  | even signif =
       (dxl / 2) ... (dxu / 2)
   | otherwise =
       succIEEE (dxl / 2) ... predIEEE (dxu / 2)
   where
     dxl = predIEEE x - x
     dxu = succIEEE x - x
-
-    evenSignificand x =
-      let
-        (sig, _) = decodeFloat x
-      in
-        even sig
+    (signif, _) = decodeFloat x
 
 {-# INLINE precisionIEEE #-}
 
