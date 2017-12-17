@@ -1,7 +1,7 @@
-name:                tolerance
+name:                precision
 version:             0.1.0.0
-synopsis:            Estimate errors in finite-precision types
-homepage:            https://github.com/ttuegel/imprecise
+synopsis:            Estimate approximation uncertainty for finite-precision types
+homepage:            https://github.com/ttuegel/precision
 license:             Apache-2.0
 license-file:        LICENSE
 author:              Thomas Tuegel
