@@ -5,7 +5,7 @@ homepage:            https://github.com/ttuegel/precision
 license:             Apache-2.0
 license-file:        LICENSE
 author:              Thomas Tuegel
-maintainer:          ttuegel@gmail.com
+maintainer:          ttuegel@mailbox.org
 copyright:           (c) 2017 Thomas Tuegel
 category:            Math
 build-type:          Simple
